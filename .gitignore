@@ -1,3 +1,4 @@
 venv-spaceship-titanic/
 .vscode/
 .ipynb_checkpoints/
+models/potential_best_sequentialnn_model.h5

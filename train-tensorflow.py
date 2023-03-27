@@ -7,31 +7,11 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 
-def name_to_vector(name):
-    alphabet = "abcdefghijklmnopqrstuvwxyz"
-    vector = [0] * len(alphabet)
-    for letter in name.lower():
-        if letter in alphabet:
-            index = alphabet.index(letter)
-            vector[index] = 1
-    return vector
-
-
 def preprocess_data(data: pd.DataFrame) -> pd.DataFrame:
     # Create new Cabin features
-    # Split the "Cabin" column into three separate columns
     cabin_split = data["Cabin"].str.split("/", expand=True)
-
-    # Rename the columns
     cabin_split.columns = ["CabinDeck", "CabinNum", "CabinSide"]
-
-    # Replace the "Cabin" column with the new columns
     data = pd.concat([data.drop("Cabin", axis=1), cabin_split], axis=1)
-
-    #Create FirstName and LastName
-    name_split = data["Name"].str.split(" ", expand=True)
-    name_split.columns = ["FirstName", "LastName"]
-    data = pd.concat([data.drop("Name", axis=1), name_split], axis=1)
     
     # Fill missing values
     data["HomePlanet"].fillna(data["HomePlanet"].mode(), inplace=True)
@@ -46,20 +26,16 @@ def preprocess_data(data: pd.DataFrame) -> pd.DataFrame:
     data["ShoppingMall"].fillna(data["ShoppingMall"].median(), inplace=True)
     data["Spa"].fillna(data["Spa"].median(), inplace=True)
     data["VRDeck"].fillna(data["VRDeck"].median(), inplace=True)
-    data["FirstName"].fillna("Unknown", inplace=True)
-    data["LastName"].fillna("Unknown", inplace=True)
 
     # Convert bools to ints
     data['CryoSleep'] = data['CryoSleep'].astype(int)
     data['VIP'] = data['VIP'].astype(int)
     
-    # Convert categorical variables to numerical
+    # One-hot encode categorical features
     data = pd.get_dummies(data, columns=['HomePlanet'])
     data = pd.get_dummies(data, columns=['CabinDeck'])
     data = pd.get_dummies(data, columns=['CabinSide'])
     data = pd.get_dummies(data, columns=['Destination'])
-    data["FirstName"] = data["FirstName"].apply(name_to_vector)
-    data["LastName"] = data["LastName"].apply(name_to_vector)
 
     # Create IsYoung feature
     data['IsYoung'] = data['Age'] <= 15
@@ -73,16 +49,22 @@ def preprocess_data(data: pd.DataFrame) -> pd.DataFrame:
     features_to_scale = [
         "Age", "TotalSpend"
     ]
-    #features_to_scale.extend(data.columns[data.columns.str.startswith('HomePlanet_')])
-    #features_to_scale.extend(data.columns[data.columns.str.startswith('CabinDeck_')])
-    #features_to_scale.extend(data.columns[data.columns.str.startswith('CabinSide_')])
-    #features_to_scale.extend(data.columns[data.columns.str.startswith('Destination')])
-
 
     scaler = StandardScaler()
     data[features_to_scale] = scaler.fit_transform(data[features_to_scale]).astype(np.float32)
 
-    data = data.drop(columns=['FirstName', 'LastName', 'CabinNum', 'RoomService', 'FoodCourt', 'ShoppingMall', 'Spa', 'VRDeck'])
+    data = data.drop(
+        columns=
+        [
+            'Name', 
+            'CabinNum', 
+            'RoomService', 
+            'FoodCourt', 
+            'ShoppingMall', 
+            'Spa', 
+            'VRDeck'
+        ]
+    )
 
     return data
 
@@ -113,8 +95,8 @@ checkpoint = tf.keras.callbacks.ModelCheckpoint(checkpoint_path, monitor='val_ac
 history: tf.keras.callbacks.History = model.fit(
     X_train.astype(np.float32), 
     y_train.astype(np.float32), 
-    epochs=100, 
-    batch_size=16, 
+    epochs=500, 
+    batch_size=32, 
     validation_data=(X_val.astype(np.float32), y_val.astype(np.float32)), 
     callbacks=[checkpoint]
     )
